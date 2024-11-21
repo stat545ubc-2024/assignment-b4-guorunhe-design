@@ -153,23 +153,26 @@ library(stringr)
 
 #' Convert a Word to Custom Pig Latin
 #'
-#' This function converts English words to a customized version of Pig Latin.
-#' 
+#' This function converts English words to a customized version of Pig Latin by applying specific rearrangement and addition rules.
+#'
 #' Rearrangement Rules:
-#' - If the word starts with a consonant or consonant cluster, move it to the end.
-#' - If the word starts with a vowel, keep it unchanged.
+#' - Consonant Start: If the word begins with a consonant or a consonant cluster, move the initial consonant(s) to the end of the word.
+#' - Vowel Start: If the word begins with a vowel, move the last consonant in the word to the beginning.
+#' - No Vowels: If the word contains no vowels, leave it unchanged in the rearrangement phase.
 #'
 #' Addition Rule:
-#' - Append "xyz" to the end of the word after rearrangement.
+#' - Append "bee" to the end of the rearranged word.
 #'
-#' @param word A single word (character string) to be converted.
-#' @return A character string representing the word in custom Pig Latin.
+#' @param word A single word (character string) to be converted. Must contain only alphabetic characters.
+#' @return A character string representing the word in customized Pig Latin.
 #' @examples
-#' pig_latin("hello")  # "ellohxyz"
-#' pig_latin("apple")  # "applexyz"
-#' pig_latin("string") # "ingstrxyz"
+#' custom_pig_latin("hello")    # "ellohbee"
+#' custom_pig_latin("apple")    # "lappebee"
+#' custom_pig_latin("string")   # "ingstrbee"
+#' custom_pig_latin("orange")   # "goranebee"
+#' custom_pig_latin("rhythm")   # "rhythmbee"
 #' @export
-pig_latin <- function(word) {
+custom_pig_latin <- function(word) {
   # Input validation
   if (!is.character(word)) {
     stop("Input must be a character string.")
@@ -179,7 +182,7 @@ pig_latin <- function(word) {
     stop("Input must be a single word.")
   }
   
-  if (!str_detect(word, "^[a-zA-Z]+$")) {
+  if (!str_detect(word, "^[A-Za-z]+$")) {
     stop("Input must contain only alphabetic characters.")
   }
   
@@ -189,68 +192,206 @@ pig_latin <- function(word) {
   # Convert word to lowercase for processing
   lower_word <- tolower(word)
   
-  # Check if the first letter is a vowel
-  if (str_sub(lower_word, 1, 1) %in% vowels) {
-    pig_word <- lower_word
-  } else {
-    # Find the position of the first vowel
-    first_vowel_pos <- str_locate(lower_word, "[aeiou]")[1, "start"]
-    
+  # Function to identify the initial consonant cluster at the start
+  get_initial_consonant_cluster <- function(w) {
+    first_vowel_pos <- str_locate(w, "[aeiou]")[1, "start"]
     if (is.na(first_vowel_pos)) {
-      # No vowels found, treat entire word as consonant cluster
-      pig_word <- lower_word
+      # No vowels, entire word is consonant cluster
+      return(w)
+    } else if (first_vowel_pos == 1) {
+      # Starts with vowel
+      return("")
     } else {
-      # Move consonant cluster to the end
-      pig_word <- str_sub(lower_word, first_vowel_pos, str_length(lower_word)) %>%
-        str_c(str_sub(lower_word, 1, first_vowel_pos - 1))
+      # Return the initial consonant cluster
+      return(str_sub(w, 1, first_vowel_pos - 1))
     }
   }
   
-  # Append the addition component
-  pig_latin_word <- str_c(pig_word, "xyz")
+  # Function to identify the last consonant in the word
+  get_last_consonant <- function(w) {
+    # Find all consonants in the word
+    consonants <- str_extract_all(w, "[bcdfghjklmnpqrstvwxyz]")[[1]]
+    if (length(consonants) == 0) {
+      return("")
+    } else {
+      # Find the last consonant
+      last_consonant <- tail(consonants, n = 1)
+      return(last_consonant)
+    }
+  }
+  
+  # Function to replace the last occurrence of a pattern in a string
+  replace_last_occurrence <- function(string, pattern, replacement) {
+    # Create a regex pattern that matches the last occurrence of the pattern
+    # Uses a negative lookahead to ensure it's the last occurrence
+    regex_pattern <- paste0("(", pattern, ")(?!.*", pattern, ")")
+    
+    # Perform the replacement
+    str_replace(string, regex_pattern, replacement)
+  }
+  
+  # Check if the first letter is a vowel
+  first_letter <- str_sub(lower_word, 1, 1)
+  
+  if (first_letter %in% vowels) {
+    # Vowel start: move the last consonant to the beginning
+    last_consonant <- get_last_consonant(lower_word)
+    if (last_consonant == "") {
+      # No consonants, leave the word as is
+      rearranged_word <- lower_word
+    } else {
+      # Remove the last consonant from its position using the replacement logic
+      rearranged_word <- replace_last_occurrence(lower_word, fixed(last_consonant), "")
+      # Prepend the last consonant
+      rearranged_word <- str_c(last_consonant, rearranged_word)
+    }
+  } else {
+    # Consonant start: move the initial consonant cluster to the end
+    initial_consonant_cluster <- get_initial_consonant_cluster(lower_word)
+    if (initial_consonant_cluster == "") {
+      rearranged_word <- lower_word
+    } else {
+      # Remove the initial consonant cluster
+      rearranged_word <- str_replace(lower_word, fixed(initial_consonant_cluster), "")
+      # Append the initial consonant cluster to the end
+      rearranged_word <- str_c(rearranged_word, initial_consonant_cluster)
+    }
+  }
+  
+  # Addition component: append "bee"
+  pig_latin_word <- str_c(rearranged_word, "bee")
+  
+  # Preserve original casing: if the original word starts with an uppercase letter, capitalize the first letter
+  if (str_detect(word, "^[A-Z]")) {
+    pig_latin_word <- str_to_title(pig_latin_word)
+  }
   
   return(pig_latin_word)
 }
 ```
 
-## Examples and Tests
+## Examples
 
 ``` r
 # Example 1: Word starts with a consonant
-pig_latin("hello")   # Output: "ellohxyz"
+custom_pig_latin("hello")   # Expected Output: "ellohbee"
 ```
 
-    ## [1] "ellohxyz"
+    ## [1] "ellohbee"
 
 ``` r
 # Example 2: Word starts with a vowel
-pig_latin("apple")   # Output: "applexyz"
+custom_pig_latin("apple")   # Expected Output: "lappebee"
 ```
 
-    ## [1] "applexyz"
+    ## [1] "lappebee"
 
 ``` r
 # Example 3: Word with consonant cluster
-pig_latin("string")  # Output: "ingstrxyz"
+custom_pig_latin("string")  # Expected Output: "ingstrbee"
 ```
 
-    ## [1] "ingstrxyz"
+    ## [1] "ingstrbee"
 
 ``` r
-# I will use use simple assertions to test the function
-
-# Test 1: Word starts with a consonant
-stopifnot(pig_latin("hello") == "ellohxyz")
-
-# Test 2: Word starts with a vowel
-stopifnot(pig_latin("apple") == "applexyz")
-
-# Test 3: Word with consonant cluster
-stopifnot(pig_latin("string") == "ingstrxyz")
-
-# Test 4: Single vowel
-stopifnot(pig_latin("a") == "axyz")
-
-# Test 5: No vowels (edge case)
-stopifnot(pig_latin("rhythm") == "rhythmxyz")
+# Example 4: Word starts with a vowel and has multiple consonants
+custom_pig_latin("orange")  # Expected Output: "goranebee"
 ```
+
+    ## [1] "goranebee"
+
+``` r
+# Example 5: Word with no vowels
+custom_pig_latin("rhythm")  # Expected Output: "rhythmbee"
+```
+
+    ## [1] "rhythmbee"
+
+``` r
+# Example 6: Capitalized word
+custom_pig_latin("Hello")   # Expected Output: "Ellohbee"
+```
+
+    ## [1] "Ellohbee"
+
+## Tests
+
+``` r
+# Load necessary libraries
+library(testthat)
+```
+
+    ## 
+    ## Attaching package: 'testthat'
+
+    ## The following object is masked from 'package:dplyr':
+    ## 
+    ##     matches
+
+    ## The following object is masked from 'package:purrr':
+    ## 
+    ##     is_null
+
+    ## The following objects are masked from 'package:readr':
+    ## 
+    ##     edition_get, local_edition
+
+    ## The following object is masked from 'package:tidyr':
+    ## 
+    ##     matches
+
+``` r
+test_that("custom_pig_latin returns correct Pig Latin conversion", {
+  # Test 1: Word starts with a consonant
+  expect_equal(custom_pig_latin("hello"), "ellohbee")
+  
+  # Test 2: Word starts with a vowel
+  expect_equal(custom_pig_latin("apple"), "lappebee")
+  
+  # Test 3: Word with consonant cluster
+  expect_equal(custom_pig_latin("string"), "ingstrbee")
+  
+  # Test 4: Word with no vowels
+  expect_equal(custom_pig_latin("rhythm"), "rhythmbee")
+  
+  # Test 5: Capitalized word
+  expect_equal(custom_pig_latin("Hello"), "Ellohbee")
+})
+```
+
+    ## Test passed 🌈
+
+``` r
+test_that("custom_pig_latin output ends with 'bee'", {
+  # Example words
+  words <- c("hello", "apple", "string", "orange", "rhythm", "Umbrella")
+  
+  # Apply the function
+  transformed_words <- sapply(words, custom_pig_latin)
+  
+  # Check that each transformed word ends with "bee"
+  expect_true(all(str_ends(transformed_words, "bee")))
+})
+```
+
+    ## Test passed 🥇
+
+``` r
+test_that("custom_pig_latin handles invalid inputs appropriately", {
+  # Test with numeric input
+  expect_error(custom_pig_latin(123), "Input must be a character string.")
+  
+  # Test with multiple words
+  expect_error(custom_pig_latin(c("hello", "world")), "Input must be a single word.")
+  
+  # Test with non-alphabetic characters
+  expect_error(custom_pig_latin("hello123"), "Input must contain only alphabetic characters.")
+  
+  expect_error(custom_pig_latin("hello-world"), "Input must contain only alphabetic characters.")
+  
+  # Test with empty string
+  expect_error(custom_pig_latin(""), "Input must contain only alphabetic characters.")
+})
+```
+
+    ## Test passed 😀
