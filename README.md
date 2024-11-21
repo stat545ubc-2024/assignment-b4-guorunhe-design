@@ -10,7 +10,7 @@ This assignment includes two exercises focusing on string manipulation in R. The
 
 ## Exercise 2: Custom Pig Latin Converter
 - **Objective**: Create a function that converts words into a customized version of Pig Latin.
-- **Description**: The function rearranges and modifies words based on whether they start with vowels or consonants and adds a suffix "xyz" to each word.
+- **Description**: The function rearranges and modifies words based on whether they start with vowels or consonants and adds a suffix "bee" to each word.
 - **Tools Used**: `stringr`
 
 ## Getting Started
